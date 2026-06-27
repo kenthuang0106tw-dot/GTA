@@ -1,34 +1,36 @@
-# GTA City Prototype
+# Open City Crime Prototype
 
-一個可直接在瀏覽器執行的俯視角城市動作遊戲原型。
+A browser-based open city action game prototype inspired by classic urban sandbox games.
 
-## 開啟方式
+## Play
 
-直接用瀏覽器打開 `index.html`。
+Open `index.html` in a browser, or publish the repository with GitHub Pages.
 
-## 功能
+## Features
 
-- 近戰攻擊
-- 射擊
-- 可上車/下車與駕駛
-- 路人 NPC 會走動並對危險反應
-- 大型城市地圖、道路、建築、車輛與小地圖
-- 支援鍵盤滑鼠與手機觸控按鈕
+- Large open city with roads, buildings, traffic, street props, and a minimap
+- Rotating chase-style camera with pseudo-3D buildings
+- On-foot movement, aiming, melee attacks, and shooting
+- Enter and exit vehicles
+- Traffic cars and pedestrians with panic behavior
+- Police vehicles, wanted stars, damage, armor, ammo, and reload
+- Mobile touch controls
 
-## 電腦操作
+## Desktop Controls
 
-- `WASD` / 方向鍵：移動或開車
-- 滑鼠：瞄準
-- 滑鼠左鍵：射擊
-- `F`：近戰攻擊
-- `E`：上車 / 下車
-- `Space`：車輛加速
-- `R`：補滿彈藥
+- `WASD` or arrow keys: move / drive
+- Mouse: aim
+- Left click: shoot
+- `F`: melee attack
+- `E`: enter / exit vehicle
+- `Shift`: sprint
+- `Space`: boost / handbrake
+- `R`: reload
 
-## 手機操作
+## Mobile Controls
 
-- 左下虛擬搖桿：移動 / 開車
-- `拳`：近戰攻擊
-- `砰`：射擊
-- `車`：上車 / 下車
-- `油`：車輛加速
+- Left stick: move / steer
+- `HIT`: melee
+- `FIRE`: shoot
+- `CAR`: enter / exit vehicle
+- `GAS`: accelerate
