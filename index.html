@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GTA City Prototype</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #071014;
+      color: #eef5f2;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background: #071014;
+      user-select: none;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #13251f;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 14px 14px auto 14px;
+      z-index: 20;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .panel {
+      min-width: 150px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: rgba(8, 16, 19, 0.7);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .title {
+      margin: 0 0 7px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0;
+      color: #ffffff;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      align-items: center;
+      gap: 9px;
+      min-height: 22px;
+      font-size: 12px;
+      color: #c7d7d1;
+    }
+
+    .bar {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #4cc38a, #f3d25c);
+    }
+
+    .mini-map {
+      width: 122px;
+      height: 122px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      background: rgba(8, 16, 19, 0.72);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    }
+
+    .touch {
+      position: fixed;
+      inset: auto 0 0;
+      z-index: 30;
+      display: none;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 18px max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      pointer-events: none;
+    }
+
+    .stick {
+      width: 128px;
+      height: 128px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 50%;
+      background: rgba(8, 16, 19, 0.36);
+      backdrop-filter: blur(8px);
+      position: relative;
+      pointer-events: auto;
+    }
+
+    .knob {
+      position: absolute;
+      left: 44px;
+      top: 44px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 7px 18px rgba(0, 0, 0, 0.32);
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 58px);
+      grid-auto-rows: 58px;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .btn {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      background: rgba(8, 16, 19, 0.56);
+      color: #fff;
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+    }
+
+    .btn:active {
+      transform: translateY(1px) scale(0.98);
+      background: rgba(40, 87, 78, 0.7);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      z-index: 25;
+      transform: translateX(-50%);
+      max-width: min(460px, calc(100vw - 32px));
+      padding: 9px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      background: rgba(8, 16, 19, 0.72);
+      color: #dbe9e3;
+      font-size: 12px;
+      text-align: center;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 160ms ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    @media (pointer: coarse), (max-width: 780px) {
+      .hud {
+        inset: 10px 10px auto 10px;
+      }
+
+      .panel {
+        min-width: 134px;
+        padding: 9px 10px;
+      }
+
+      .mini-map {
+        width: 96px;
+        height: 96px;
+      }
+
+      .touch {
+        display: flex;
+      }
+
+      .toast {
+        bottom: 164px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div class="hud" aria-hidden="true">
+    <div class="panel">
+      <p class="title">GTA City</p>
+      <div class="row"><span>HP</span><div class="bar"><span id="hpBar"></span></div></div>
+      <div class="row"><span>Ammo</span><strong id="ammoText">24</strong></div>
+      <div class="row"><span>Mode</span><strong id="modeText">On foot</strong></div>
+      <div class="row"><span>Heat</span><strong id="heatText">0</strong></div>
+    </div>
+    <canvas id="map" class="mini-map" width="122" height="122"></canvas>
+  </div>
+
+  <div class="touch" aria-hidden="true">
+    <div id="stick" class="stick"><div id="knob" class="knob"></div></div>
+    <div class="buttons">
+      <button id="attackBtn" class="btn" type="button">拳</button>
+      <button id="shootBtn" class="btn" type="button">砰</button>
+      <button id="enterBtn" class="btn" type="button">車</button>
+      <button id="boostBtn" class="btn" type="button">油</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">WASD move, mouse aim, click shoot, F punch, E car</div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const mapCanvas = document.getElementById("map");
+      const mapCtx = mapCanvas.getContext("2d");
+      const hpBar = document.getElementById("hpBar");
+      const ammoText = document.getElementById("ammoText");
+      const modeText = document.getElementById("modeText");
+      const heatText = document.getElementById("heatText");
+      const toast = document.getElementById("toast");
+      const stick = document.getElementById("stick");
+      const knob = document.getElementById("knob");
+
+      const WORLD = 4800;
+      const keys = new Set();
+      const bullets = [];
+      const sparks = [];
+      const npcs = [];
+      const vehicles = [];
+      const buildings = [];
+      const palms = [];
+      const cross = { x: 0, y: 0 };
+      const camera = { x: 0, y: 0 };
+      const touchMove = { x: 0, y: 0 };
+      const input = { shoot: false, boost: false };
+      let last = performance.now();
+      let toastUntil = 0;
+
+      const player = {
+        x: WORLD / 2,
+        y: WORLD / 2 + 120,
+        r: 13,
+        angle: -Math.PI / 2,
+        hp: 100,
+        ammo: 48,
+        heat: 0,
+        punchTimer: 0,
+        shootTimer: 0,
+        car: null
+      };
+
+      function resize() {
+        const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+        canvas.width = Math.floor(innerWidth * dpr);
+        canvas.height = Math.floor(innerHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        mapCanvas.width = Math.floor(mapCanvas.clientWidth * dpr);
+        mapCanvas.height = Math.floor(mapCanvas.clientHeight * dpr);
+        mapCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      function rand(seed) {
+        let x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+      }
+
+      function clamp(v, min, max) {
+        return Math.max(min, Math.min(max, v));
+      }
+
+      function dist(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+
+      function showToast(text, ms = 1800) {
+        toast.textContent = text;
+        toast.classList.add("show");
+        toastUntil = performance.now() + ms;
+      }
+
+      function makeWorld() {
+        for (let x = 360; x < WORLD - 360; x += 620) {
+          for (let y = 360; y < WORLD - 360; y += 540) {
+            if ((x > WORLD / 2 - 520 && x < WORLD / 2 + 520) || (y > WORLD / 2 - 430 && y < WORLD / 2 + 430)) continue;
+            const w = 150 + rand(x * y) * 150;
+            const h = 130 + rand(x + y) * 180;
+            buildings.push({ x: x - w / 2, y: y - h / 2, w, h, color: rand(x) > 0.5 ? "#26383d" : "#33413c" });
+          }
+        }
+
+        for (let i = 0; i < 36; i++) {
+          vehicles.push({
+            x: 260 + rand(i * 41) * (WORLD - 520),
+            y: 260 + rand(i * 67) * (WORLD - 520),
+            w: 50,
+            h: 26,
+            angle: rand(i * 13) * Math.PI * 2,
+            speed: 0,
+            color: ["#d85f45", "#3288bd", "#f1c453", "#6aa36f", "#d6d7db", "#2b3135"][i % 6],
+            occupied: false,
+            ai: i % 4 === 0
+          });
+        }
+
+        for (let i = 0; i < 92; i++) {
+          npcs.push({
+            x: 180 + rand(i * 23) * (WORLD - 360),
+            y: 180 + rand(i * 31) * (WORLD - 360),
+            r: 10,
+            hp: 40,
+            angle: rand(i * 7) * Math.PI * 2,
+            speed: 28 + rand(i * 11) * 24,
+            panic: 0,
+            dead: false,
+            color: ["#88c0d0", "#e0b97f", "#c47a7a", "#a3be8c", "#b48ead"][i % 5]
+          });
+        }
+
+        for (let i = 0; i < 150; i++) {
+          palms.push({
+            x: 90 + rand(i * 71) * (WORLD - 180),
+            y: 90 + rand(i * 89) * (WORLD - 180),
+            s: 0.8 + rand(i * 97) * 0.7
+          });
+        }
+      }
+
+      function worldToScreen(x, y) {
+        return { x: x - camera.x, y: y - camera.y };
+      }
+
+      function screenToWorld(x, y) {
+        return { x: x + camera.x, y: y + camera.y };
+      }
+
+      function collidesBuilding(x, y, r) {
+        for (const b of buildings) {
+          const cx = clamp(x, b.x, b.x + b.w);
+          const cy = clamp(y, b.y, b.y + b.h);
+          if (Math.hypot(x - cx, y - cy) < r) return true;
+        }
+        return false;
+      }
+
+      function tryMove(entity, dx, dy, radius) {
+        const nx = clamp(entity.x + dx, radius, WORLD - radius);
+        const ny = clamp(entity.y + dy, radius, WORLD - radius);
+        if (!collidesBuilding(nx, entity.y, radius)) entity.x = nx;
+        if (!collidesBuilding(entity.x, ny, radius)) entity.y = ny;
+      }
+
+      function nearestVehicle() {
+        let best = null;
+        let bestD = 72;
+        const px = player.car ? player.car.x : player.x;
+        const py = player.car ? player.car.y : player.y;
+        for (const v of vehicles) {
+          if (v.occupied && v !== player.car) continue;
+          const d = Math.hypot(v.x - px, v.y - py);
+          if (d < bestD) {
+            best = v;
+            bestD = d;
+          }
+        }
+        return best;
+      }
+
+      function toggleVehicle() {
+        if (player.car) {
+          const car = player.car;
+          car.occupied = false;
+          player.x = clamp(car.x + Math.cos(car.angle + Math.PI / 2) * 44, 20, WORLD - 20);
+          player.y = clamp(car.y + Math.sin(car.angle + Math.PI / 2) * 44, 20, WORLD - 20);
+          player.car = null;
+          showToast("Exited vehicle");
+          return;
+        }
+
+        const v = nearestVehicle();
+        if (!v) {
+          showToast("No vehicle nearby");
+          return;
+        }
+        player.car = v;
+        v.occupied = true;
+        v.ai = false;
+        showToast("Vehicle acquired");
+      }
+
+      function punch() {
+        if (player.car) return;
+        player.punchTimer = 0.18;
+        const reach = 44;
+        const hit = { x: player.x + Math.cos(player.angle) * reach, y: player.y + Math.sin(player.angle) * reach };
+        for (const n of npcs) {
+          if (n.dead) continue;
+          if (Math.hypot(n.x - hit.x, n.y - hit.y) < 28) {
+            n.hp -= 24;
+            n.panic = 2.2;
+            player.heat = Math.min(5, player.heat + 0.45);
+            sparks.push({ x: n.x, y: n.y, t: 0.24, color: "#ffe08a" });
+            if (n.hp <= 0) n.dead = true;
+          }
+        }
+      }
+
+      function shoot() {
+        if (player.shootTimer > 0 || player.ammo <= 0) return;
+        const source = player.car || player;
+        const angle = player.car ? player.car.angle : player.angle;
+        player.shootTimer = player.car ? 0.16 : 0.22;
+        player.ammo -= 1;
+        player.heat = Math.min(5, player.heat + 0.3);
+        bullets.push({
+          x: source.x + Math.cos(angle) * 24,
+          y: source.y + Math.sin(angle) * 24,
+          vx: Math.cos(angle) * 760,
+          vy: Math.sin(angle) * 760,
+          life: 0.85
+        });
+      }
+
+      function updatePlayer(dt) {
+        const mx = (keys.has("a") || keys.has("arrowleft") ? -1 : 0) + (keys.has("d") || keys.has("arrowright") ? 1 : 0) + touchMove.x;
+        const my = (keys.has("w") || keys.has("arrowup") ? -1 : 0) + (keys.has("s") || keys.has("arrowdown") ? 1 : 0) + touchMove.y;
+        const mag = Math.hypot(mx, my) || 1;
+
+        if (player.car) {
+          const car = player.car;
+          const accel = ((keys.has("w") || keys.has("arrowup") ? 1 : 0) + (touchMove.y < -0.15 ? 1 : 0) - (keys.has("s") || keys.has("arrowdown") ? 0.75 : 0) - (touchMove.y > 0.15 ? 0.75 : 0));
+          const turn = ((keys.has("d") || keys.has("arrowright") ? 1 : 0) + (touchMove.x > 0.15 ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0) - (touchMove.x < -0.15 ? 1 : 0));
+          const maxSpeed = input.boost || keys.has(" ") ? 410 : 300;
+          car.speed += accel * 520 * dt;
+          car.speed *= Math.pow(0.965, dt * 60);
+          car.speed = clamp(car.speed, -150, maxSpeed);
+          car.angle += turn * (1.8 + Math.abs(car.speed) / 220) * dt * Math.sign(car.speed || 1);
+          tryMove(car, Math.cos(car.angle) * car.speed * dt, Math.sin(car.angle) * car.speed * dt, 27);
+          player.x = car.x;
+          player.y = car.y;
+
+          for (const n of npcs) {
+            if (n.dead) continue;
+            if (Math.hypot(n.x - car.x, n.y - car.y) < 34 && Math.abs(car.speed) > 130) {
+              n.hp -= Math.abs(car.speed) * 0.12;
+              n.panic = 3;
+              player.heat = Math.min(5, player.heat + 0.25);
+              sparks.push({ x: n.x, y: n.y, t: 0.22, color: "#ff6b5f" });
+              if (n.hp <= 0) n.dead = true;
+            }
+          }
+        } else {
+          if (Math.hypot(mx, my) > 0.12) {
+            const speed = keys.has("shift") ? 235 : 170;
+            tryMove(player, (mx / mag) * speed * dt, (my / mag) * speed * dt, player.r);
+          }
+          const aim = screenToWorld(cross.x, cross.y);
+          player.angle = Math.atan2(aim.y - player.y, aim.x - player.x);
+        }
+
+        if (input.shoot) shoot();
+        player.punchTimer = Math.max(0, player.punchTimer - dt);
+        player.shootTimer = Math.max(0, player.shootTimer - dt);
+        player.heat = Math.max(0, player.heat - dt * 0.035);
+      }
+
+      function updateNpcs(dt) {
+        for (const n of npcs) {
+          if (n.dead) continue;
+          const threat = player.car || player;
+          const d = Math.hypot(n.x - threat.x, n.y - threat.y);
+          if (player.heat > 0.5 && d < 320) n.panic = Math.max(n.panic, 1.5);
+
+          if (n.panic > 0) {
+            n.angle = Math.atan2(n.y - threat.y, n.x - threat.x) + Math.sin(performance.now() / 240 + n.x) * 0.35;
+            n.panic -= dt;
+          } else if (rand(Math.floor(performance.now() / 900) + n.x + n.y) > 0.992) {
+            n.angle += (rand(n.x * n.y + performance.now()) - 0.5) * 1.6;
+          }
+
+          const speed = n.panic > 0 ? n.speed * 2.15 : n.speed;
+          tryMove(n, Math.cos(n.angle) * speed * dt, Math.sin(n.angle) * speed * dt, n.r);
+        }
+      }
+
+      function updateCars(dt) {
+        for (const car of vehicles) {
+          if (!car.ai || car.occupied) continue;
+          if (rand(Math.floor(performance.now() / 1200) + car.x) > 0.985) car.angle += (rand(car.y + performance.now()) - 0.5) * 0.9;
+          car.speed += 25 * dt;
+          car.speed = clamp(car.speed, 45, 105);
+          tryMove(car, Math.cos(car.angle) * car.speed * dt, Math.sin(car.angle) * car.speed * dt, 27);
+        }
+      }
+
+      function updateBullets(dt) {
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const b = bullets[i];
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          b.life -= dt;
+          let gone = b.life <= 0 || b.x < 0 || b.y < 0 || b.x > WORLD || b.y > WORLD || collidesBuilding(b.x, b.y, 4);
+          if (!gone) {
+            for (const n of npcs) {
+              if (n.dead) continue;
+              if (Math.hypot(n.x - b.x, n.y - b.y) < n.r + 5) {
+                n.hp -= 34;
+                n.panic = 3;
+                gone = true;
+                sparks.push({ x: n.x, y: n.y, t: 0.22, color: "#ffd166" });
+                if (n.hp <= 0) n.dead = true;
+                break;
+              }
+            }
+          }
+          if (gone) bullets.splice(i, 1);
+        }
+
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          sparks[i].t -= dt;
+          if (sparks[i].t <= 0) sparks.splice(i, 1);
+        }
+      }
+
+      function drawRoads() {
+        ctx.fillStyle = "#263234";
+        for (let x = 420; x < WORLD; x += 520) {
+          const sx = x - camera.x;
+          ctx.fillRect(sx - 44, -camera.y, 88, WORLD);
+          ctx.fillStyle = "rgba(255,255,255,0.12)";
+          for (let y = 0; y < WORLD; y += 70) ctx.fillRect(sx - 2, y - camera.y + 14, 4, 34);
+          ctx.fillStyle = "#263234";
+        }
+        for (let y = 380; y < WORLD; y += 500) {
+          const sy = y - camera.y;
+          ctx.fillRect(-camera.x, sy - 44, WORLD, 88);
+          ctx.fillStyle = "rgba(255,255,255,0.12)";
+          for (let x = 0; x < WORLD; x += 70) ctx.fillRect(x - camera.x + 14, sy - 2, 34, 4);
+          ctx.fillStyle = "#263234";
+        }
+      }
+
+      function drawWorld() {
+        ctx.fillStyle = "#143026";
+        ctx.fillRect(0, 0, innerWidth, innerHeight);
+
+        const grid = 120;
+        ctx.strokeStyle = "rgba(255,255,255,0.025)";
+        ctx.lineWidth = 1;
+        const startX = -camera.x % grid;
+        const startY = -camera.y % grid;
+        for (let x = startX; x < innerWidth; x += grid) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, innerHeight);
+          ctx.stroke();
+        }
+        for (let y = startY; y < innerHeight; y += grid) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(innerWidth, y);
+          ctx.stroke();
+        }
+
+        drawRoads();
+
+        ctx.fillStyle = "#214933";
+        ctx.fillRect(1900 - camera.x, 1870 - camera.y, 980, 760);
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.fillRect(2040 - camera.x, 2020 - camera.y, 700, 430);
+
+        for (const p of palms) {
+          const s = worldToScreen(p.x, p.y);
+          if (s.x < -40 || s.y < -40 || s.x > innerWidth + 40 || s.y > innerHeight + 40) continue;
+          ctx.fillStyle = "#2c1f16";
+          ctx.fillRect(s.x - 2 * p.s, s.y - 9 * p.s, 4 * p.s, 18 * p.s);
+          ctx.fillStyle = "#4d9b62";
+          ctx.beginPath();
+          ctx.arc(s.x, s.y - 11 * p.s, 10 * p.s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (const b of buildings) {
+          const s = worldToScreen(b.x, b.y);
+          if (s.x > innerWidth + 60 || s.y > innerHeight + 60 || s.x + b.w < -60 || s.y + b.h < -60) continue;
+          ctx.fillStyle = "rgba(0,0,0,0.22)";
+          ctx.fillRect(s.x + 8, s.y + 10, b.w, b.h);
+          ctx.fillStyle = b.color;
+          ctx.fillRect(s.x, s.y, b.w, b.h);
+          ctx.fillStyle = "rgba(255,255,255,0.08)";
+          for (let wx = 14; wx < b.w - 8; wx += 34) {
+            for (let wy = 14; wy < b.h - 8; wy += 34) ctx.fillRect(s.x + wx, s.y + wy, 12, 12);
+          }
+        }
+      }
+
+      function drawCar(car) {
+        const s = worldToScreen(car.x, car.y);
+        if (s.x < -70 || s.y < -70 || s.x > innerWidth + 70 || s.y > innerHeight + 70) return;
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(car.angle);
+        ctx.fillStyle = "rgba(0,0,0,0.32)";
+        ctx.fillRect(-25, -13, 56, 30);
+        ctx.fillStyle = car.color;
+        ctx.fillRect(-25, -13, 50, 26);
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.fillRect(2, -9, 14, 18);
+        ctx.fillStyle = "#11191a";
+        ctx.fillRect(-18, -16, 10, 4);
+        ctx.fillRect(9, -16, 10, 4);
+        ctx.fillRect(-18, 12, 10, 4);
+        ctx.fillRect(9, 12, 10, 4);
+        ctx.restore();
+      }
+
+      function drawPerson(n, isPlayer = false) {
+        const s = worldToScreen(n.x, n.y);
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(n.angle);
+        ctx.fillStyle = "rgba(0,0,0,0.24)";
+        ctx.beginPath();
+        ctx.ellipse(2, 4, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = isPlayer ? "#f0f4f8" : n.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, isPlayer ? 13 : 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = isPlayer ? "#284b63" : "#1a2424";
+        ctx.fillRect(4, -4, 14, 8);
+        if (isPlayer && player.punchTimer > 0) {
+          ctx.strokeStyle = "#f7d774";
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.arc(18, 0, 20, -0.7, 0.7);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function render() {
+        const focus = player.car || player;
+        camera.x = clamp(focus.x - innerWidth / 2, 0, WORLD - innerWidth);
+        camera.y = clamp(focus.y - innerHeight / 2, 0, WORLD - innerHeight);
+
+        drawWorld();
+        for (const v of vehicles) drawCar(v);
+        for (const n of npcs) {
+          if (n.dead) continue;
+          const s = worldToScreen(n.x, n.y);
+          if (s.x < -40 || s.y < -40 || s.x > innerWidth + 40 || s.y > innerHeight + 40) continue;
+          drawPerson(n);
+        }
+        if (!player.car) drawPerson(player, true);
+
+        ctx.fillStyle = "#ffe08a";
+        for (const b of bullets) {
+          const s = worldToScreen(b.x, b.y);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (const sp of sparks) {
+          const s = worldToScreen(sp.x, sp.y);
+          ctx.strokeStyle = sp.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 24 * (sp.t + 0.05), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        if (!player.car) {
+          ctx.strokeStyle = "rgba(255,255,255,0.6)";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cross.x, cross.y, 12, 0, Math.PI * 2);
+          ctx.moveTo(cross.x - 18, cross.y);
+          ctx.lineTo(cross.x - 6, cross.y);
+          ctx.moveTo(cross.x + 6, cross.y);
+          ctx.lineTo(cross.x + 18, cross.y);
+          ctx.moveTo(cross.x, cross.y - 18);
+          ctx.lineTo(cross.x, cross.y - 6);
+          ctx.moveTo(cross.x, cross.y + 6);
+          ctx.lineTo(cross.x, cross.y + 18);
+          ctx.stroke();
+        }
+
+        drawMiniMap();
+        hpBar.style.width = `${player.hp}%`;
+        ammoText.textContent = player.ammo;
+        modeText.textContent = player.car ? "Driving" : "On foot";
+        heatText.textContent = player.heat.toFixed(1);
+      }
+
+      function drawMiniMap() {
+        const w = mapCanvas.clientWidth;
+        const h = mapCanvas.clientHeight;
+        mapCtx.clearRect(0, 0, w, h);
+        mapCtx.fillStyle = "#10211d";
+        mapCtx.fillRect(0, 0, w, h);
+        mapCtx.fillStyle = "#263234";
+        for (let x = 420; x < WORLD; x += 520) mapCtx.fillRect((x / WORLD) * w - 1, 0, 2, h);
+        for (let y = 380; y < WORLD; y += 500) mapCtx.fillRect(0, (y / WORLD) * h - 1, w, 2);
+        mapCtx.fillStyle = "#d85f45";
+        for (const v of vehicles) mapCtx.fillRect((v.x / WORLD) * w - 1, (v.y / WORLD) * h - 1, 2, 2);
+        mapCtx.fillStyle = "#ffffff";
+        mapCtx.beginPath();
+        mapCtx.arc((player.x / WORLD) * w, (player.y / WORLD) * h, 4, 0, Math.PI * 2);
+        mapCtx.fill();
+      }
+
+      function loop(now) {
+        const dt = Math.min(0.033, (now - last) / 1000);
+        last = now;
+        updatePlayer(dt);
+        updateNpcs(dt);
+        updateCars(dt);
+        updateBullets(dt);
+        render();
+        if (toastUntil && now > toastUntil) {
+          toast.classList.remove("show");
+          toastUntil = 0;
+        }
+        requestAnimationFrame(loop);
+      }
+
+      addEventListener("resize", resize);
+      addEventListener("keydown", (e) => {
+        keys.add(e.key.toLowerCase());
+        if (e.key.toLowerCase() === "f") punch();
+        if (e.key.toLowerCase() === "e") toggleVehicle();
+        if (e.key.toLowerCase() === "r") player.ammo = 48;
+      });
+      addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+      addEventListener("mousemove", (e) => {
+        cross.x = e.clientX;
+        cross.y = e.clientY;
+      });
+      addEventListener("mousedown", () => { input.shoot = true; });
+      addEventListener("mouseup", () => { input.shoot = false; });
+
+      function bindHold(id, on, off) {
+        const el = document.getElementById(id);
+        el.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          el.setPointerCapture(e.pointerId);
+          on();
+        });
+        el.addEventListener("pointerup", off);
+        el.addEventListener("pointercancel", off);
+      }
+
+      bindHold("shootBtn", () => { input.shoot = true; }, () => { input.shoot = false; });
+      bindHold("boostBtn", () => { input.boost = true; }, () => { input.boost = false; });
+      document.getElementById("attackBtn").addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        punch();
+      });
+      document.getElementById("enterBtn").addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        toggleVehicle();
+      });
+
+      stick.addEventListener("pointerdown", handleStick);
+      stick.addEventListener("pointermove", handleStick);
+      stick.addEventListener("pointerup", resetStick);
+      stick.addEventListener("pointercancel", resetStick);
+
+      function handleStick(e) {
+        e.preventDefault();
+        stick.setPointerCapture(e.pointerId);
+        const rect = stick.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        const max = rect.width * 0.34;
+        const m = Math.min(max, Math.hypot(dx, dy) || 1);
+        const nx = dx / (Math.hypot(dx, dy) || 1);
+        const ny = dy / (Math.hypot(dx, dy) || 1);
+        touchMove.x = (nx * m) / max;
+        touchMove.y = (ny * m) / max;
+        knob.style.transform = `translate(${nx * m}px, ${ny * m}px)`;
+        cross.x = innerWidth / 2 + touchMove.x * 120;
+        cross.y = innerHeight / 2 + touchMove.y * 120;
+        if (!player.car && Math.hypot(touchMove.x, touchMove.y) > 0.2) {
+          player.angle = Math.atan2(touchMove.y, touchMove.x);
+        }
+      }
+
+      function resetStick() {
+        touchMove.x = 0;
+        touchMove.y = 0;
+        knob.style.transform = "translate(0, 0)";
+      }
+
+      resize();
+      makeWorld();
+      cross.x = innerWidth / 2;
+      cross.y = innerHeight / 2;
+      showToast("City loaded", 1400);
+      requestAnimationFrame(loop);
+    })();
+  </script>
+</body>
+</html>
