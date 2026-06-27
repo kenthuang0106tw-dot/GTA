@@ -24,6 +24,7 @@
   </div>
 
   <div id="mission" class="mission">Explore the city. Find a car, drive, shoot, and survive the wanted level.</div>
+  <pre id="debug" class="debug" aria-live="polite"></pre>
   <div class="crosshair" aria-hidden="true"></div>
   <div id="weapon" class="weapon" aria-hidden="true"><div class="gun"></div></div>
   <div class="help">Click: mouse look | WASD: move/drive | Left click: shoot | F: melee | E: enter/exit | Shift: sprint | Space: brake/boost | R: reload</div>
@@ -39,6 +40,22 @@
     <div id="look" class="look"><div id="lookKnob" class="knob"></div></div>
   </div>
 
+  <script>
+    window.addEventListener("error", event => {
+      const debug = document.getElementById("debug");
+      const mission = document.getElementById("mission");
+      const text = event.message || "Unknown runtime error";
+      if (mission) mission.textContent = `Runtime error: ${text}`;
+      if (debug) debug.textContent = `${text}\n${event.filename || ""}:${event.lineno || 0}:${event.colno || 0}`;
+    });
+    window.addEventListener("unhandledrejection", event => {
+      const debug = document.getElementById("debug");
+      const mission = document.getElementById("mission");
+      const text = event.reason?.message || String(event.reason || "Unknown promise rejection");
+      if (mission) mission.textContent = `Load error: ${text}`;
+      if (debug) debug.textContent = text;
+    });
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

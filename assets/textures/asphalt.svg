@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <rect width="256" height="256" fill="#333231"/>
-  <path d="M0 42h256M0 91h256M0 145h256M0 210h256" stroke="#4b4944" stroke-opacity=".28"/>
-  <path d="M12 21h42M86 30h18M140 17h76M24 69h88M162 73h50M8 120h60M98 130h130M28 181h94M150 194h80M48 233h156" stroke="#1d1d1c" stroke-opacity=".35" stroke-width="3"/>
-  <g fill="#5d5a52" fill-opacity=".45">
+  <rect width="256" height="256" fill="#1f2021"/>
+  <path d="M0 42h256M0 91h256M0 145h256M0 210h256" stroke="#4b4b47" stroke-opacity=".34"/>
+  <path d="M12 21h42M86 30h18M140 17h76M24 69h88M162 73h50M8 120h60M98 130h130M28 181h94M150 194h80M48 233h156" stroke="#080909" stroke-opacity=".42" stroke-width="3"/>
+  <g fill="#6b685f" fill-opacity=".36">
     <rect x="18" y="35" width="3" height="3"/><rect x="64" y="82" width="2" height="2"/><rect x="106" y="52" width="4" height="3"/><rect x="180" y="32" width="2" height="3"/>
     <rect x="210" y="92" width="5" height="2"/><rect x="32" y="134" width="2" height="3"/><rect x="78" y="196" width="4" height="2"/><rect x="224" y="220" width="3" height="3"/>
     <rect x="122" y="236" width="2" height="2"/><rect x="155" y="166" width="4" height="4"/><rect x="238" y="152" width="2" height="2"/><rect x="6" y="238" width="4" height="2"/>

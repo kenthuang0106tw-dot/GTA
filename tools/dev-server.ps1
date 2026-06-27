@@ -4,6 +4,7 @@ param(
 )
 
 $server = [System.Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse("127.0.0.1"), $Port)
+$Root = [IO.Path]::GetFullPath($Root)
 $server.Start()
 Write-Host "Serving $Root at http://127.0.0.1:$Port/"
 
@@ -14,14 +15,15 @@ try {
       $stream = $client.GetStream()
       $reader = [IO.StreamReader]::new($stream)
       $line = $reader.ReadLine()
-      while ($reader.Peek() -ge 0) {
+      while ($true) {
         $header = $reader.ReadLine()
-        if ($header -eq "") { break }
+        if ([string]::IsNullOrEmpty($header)) { break }
       }
 
       $path = "index.html"
       if ($line -match "GET /([^ ]*)") {
         $path = [Uri]::UnescapeDataString($Matches[1])
+        $path = ($path -split "\?")[0]
         if ([string]::IsNullOrWhiteSpace($path)) { $path = "index.html" }
       }
 
@@ -33,6 +35,8 @@ try {
         elseif ($file.EndsWith(".js")) { $type = "text/javascript" }
         elseif ($file.EndsWith(".css")) { $type = "text/css" }
         elseif ($file.EndsWith(".svg")) { $type = "image/svg+xml" }
+        elseif ($file.EndsWith(".glb")) { $type = "model/gltf-binary" }
+        elseif ($file.EndsWith(".png")) { $type = "image/png" }
         $head = "HTTP/1.1 200 OK`r`nContent-Type: $type`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
         $headBytes = [Text.Encoding]::ASCII.GetBytes($head)
         $stream.Write($headBytes, 0, $headBytes.Length)

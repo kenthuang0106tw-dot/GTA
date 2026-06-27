@@ -29,9 +29,11 @@ http://127.0.0.1:8787/
 - Three.js is now vendored in `vendor/three.module.js`; the game no longer depends on jsDelivr.
 - Game code is split into `src/main.js` and `src/styles.css`.
 - Local texture assets live in `assets/textures/`.
+- Real low-poly car models from Kenney Car Kit live in `assets/models/cars/`.
 - Forward/backward movement is fixed for walking and driving.
 - The city now uses textured roads, sidewalks, building facades, grass, a sky dome, fog, skyline, lighting, and shadows.
 - Cars are multi-part low-poly models with wheels, bumpers, lights, cabins, police sirens, and wheel animation.
+- Traffic now uses real `.glb` car models instead of only hand-built box geometry.
 - Pedestrians are multi-part low-poly characters with walking animation and panic behavior.
 - Audio is generated with WebAudio for shots, melee hits, explosions, and engine hum.
 - Driving switches to a dashboard/steering-wheel overlay.
@@ -56,3 +58,8 @@ http://127.0.0.1:8787/
 - `FIRE`: shoot
 - `CAR`: enter / exit vehicle
 - `GAS`: accelerate
+
+## Asset Credits
+
+- Car models: Kenney Car Kit, Creative Commons CC0.
+  Source: https://kenney.nl/assets/car-kit

@@ -1,4 +1,5 @@
 import * as THREE from "../vendor/three.module.js";
+import { GLTFLoader } from "../vendor/GLTFLoader.js";
 
 const root = document.getElementById("game");
 const healthEl = document.getElementById("health");
@@ -8,6 +9,7 @@ const modeEl = document.getElementById("mode");
 const starsEl = document.getElementById("stars");
 const missionEl = document.getElementById("mission");
 const weaponEl = document.getElementById("weapon");
+missionEl.textContent = "Booting 3D renderer...";
 
 const WORLD = 2600;
 const ROAD_EVERY = 280;
@@ -19,6 +21,7 @@ const pedestrians = [];
 const cops = [];
 const bullets = [];
 const particles = [];
+const carModels = {};
 const input = { x: 0, y: 0, lookX: 0, lookY: 0, fire: false, gas: false };
 const center = new THREE.Vector2(0, 0);
 const clock = new THREE.Clock();
@@ -29,9 +32,9 @@ let engineOsc = null;
 let engineGain = null;
 
 const player = {
-  pos: new THREE.Vector3(0, 1.8, 0),
+  pos: new THREE.Vector3(0, 5.2, -88),
   yaw: Math.PI,
-  pitch: 0,
+  pitch: -0.04,
   health: 100,
   armor: 35,
   ammo: 48,
@@ -43,8 +46,8 @@ const player = {
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xb7a783);
-scene.fog = new THREE.FogExp2(0xb7a783, 0.0022);
+scene.background = new THREE.Color(0xd7b67e);
+scene.fog = new THREE.FogExp2(0xd7b67e, 0.00095);
 
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 900);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -57,6 +60,7 @@ renderer.toneMappingExposure = 1.08;
 root.appendChild(renderer.domElement);
 
 const textureLoader = new THREE.TextureLoader();
+const gltfLoader = new GLTFLoader();
 const textures = {
   asphalt: loadTexture("./assets/textures/asphalt.svg", 8),
   facade: loadTexture("./assets/textures/facade.svg", 2),
@@ -67,7 +71,7 @@ const textures = {
 
 const mats = {
   ground: new THREE.MeshStandardMaterial({ color: 0x8b8657, map: textures.grass, roughness: 0.92 }),
-  road: new THREE.MeshStandardMaterial({ color: 0x55504b, map: textures.asphalt, roughness: 0.96 }),
+  road: new THREE.MeshStandardMaterial({ color: 0x232425, map: textures.asphalt, roughness: 0.98 }),
   sidewalk: new THREE.MeshStandardMaterial({ color: 0x8a8170, map: textures.sidewalk, roughness: 0.9 }),
   facade: colors => new THREE.MeshStandardMaterial({ color: colors, map: textures.facade, roughness: 0.88, metalness: 0.03 }),
   roof: new THREE.MeshStandardMaterial({ color: 0x272a2a, roughness: 0.8 }),
@@ -76,13 +80,34 @@ const mats = {
   glass: new THREE.MeshStandardMaterial({ color: 0x17222a, roughness: 0.28, metalness: 0.18 }),
   chrome: new THREE.MeshStandardMaterial({ color: 0xd4d0c2, roughness: 0.32, metalness: 0.55 }),
   skin: new THREE.MeshStandardMaterial({ color: 0xd9b38d, roughness: 0.72 }),
-  dark: new THREE.MeshStandardMaterial({ color: 0x25211f, roughness: 0.8 })
+  dark: new THREE.MeshStandardMaterial({ color: 0x25211f, roughness: 0.8 }),
+  shopGlass: new THREE.MeshStandardMaterial({ color: 0x16272d, roughness: 0.18, metalness: 0.18, emissive: 0x061014, emissiveIntensity: 0.55 }),
+  curb: new THREE.MeshStandardMaterial({ color: 0xd6c8a2, roughness: 0.7 }),
+  whitePaint: new THREE.MeshBasicMaterial({ color: 0xf5ead0 }),
+  yellowPaint: new THREE.MeshBasicMaterial({ color: 0xd9b84f })
 };
 
-const hemi = new THREE.HemisphereLight(0xf0d7a2, 0x3f4033, 1.18);
+const carModelPaths = {
+  sedan: "./assets/models/cars/sedan.glb",
+  taxi: "./assets/models/cars/taxi.glb",
+  suv: "./assets/models/cars/suv.glb",
+  van: "./assets/models/cars/van.glb",
+  police: "./assets/models/cars/police.glb"
+};
+
+for (const [name, path] of Object.entries(carModelPaths)) {
+  gltfLoader.load(path, gltf => {
+    carModels[name] = gltf.scene;
+    for (const car of vehicles) {
+      if (car.modelName === name) applyCarModel(car);
+    }
+  });
+}
+
+const hemi = new THREE.HemisphereLight(0xffefc2, 0x6b6a5a, 1.9);
 scene.add(hemi);
 
-const sun = new THREE.DirectionalLight(0xffd090, 2.35);
+const sun = new THREE.DirectionalLight(0xffd090, 3.2);
 sun.position.set(-160, 260, 90);
 sun.castShadow = true;
 sun.shadow.camera.left = -360;
@@ -143,7 +168,7 @@ function addTo(group, mesh, x, y, z) {
 function spawnCity() {
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(WORLD * 0.72, 24, 12),
-    new THREE.MeshBasicMaterial({ map: textures.sky, side: THREE.BackSide, depthWrite: false })
+    new THREE.MeshBasicMaterial({ color: 0xd9b87f, side: THREE.BackSide, depthWrite: false })
   );
   sky.position.y = 90;
   scene.add(sky);
@@ -156,10 +181,19 @@ function spawnCity() {
   for (let i = -WORLD / 2; i <= WORLD / 2; i += ROAD_EVERY) {
     box(ROAD_W, 0.08, WORLD, mats.road, i, 0.02, 0, false);
     box(WORLD, 0.08, ROAD_W, mats.road, 0, 0.025, i, false);
-    box(3, 0.09, WORLD, mats.line, i, 0.07, 0, false);
-    box(WORLD, 0.09, 3, mats.line, 0, 0.075, i, false);
-    box(ROAD_W + 22, 0.06, WORLD, mats.sidewalk, i, 0.0, 0, false);
-    box(WORLD, 0.06, ROAD_W + 22, mats.sidewalk, 0, 0.0, i, false);
+    box(3, 0.14, WORLD, mats.line, i, 0.12, 0, false);
+    box(WORLD, 0.14, 3, mats.line, 0, 0.125, i, false);
+
+    const sideOffset = ROAD_W / 2 + 10;
+    box(14, 0.12, WORLD, mats.sidewalk, i - sideOffset, 0.09, 0, false);
+    box(14, 0.12, WORLD, mats.sidewalk, i + sideOffset, 0.09, 0, false);
+    box(WORLD, 0.12, 14, mats.sidewalk, 0, 0.095, i - sideOffset, false);
+    box(WORLD, 0.12, 14, mats.sidewalk, 0, 0.095, i + sideOffset, false);
+
+    box(2, 0.2, WORLD, mats.curb, i - ROAD_W / 2, 0.2, 0, false);
+    box(2, 0.2, WORLD, mats.curb, i + ROAD_W / 2, 0.2, 0, false);
+    box(WORLD, 0.2, 2, mats.curb, 0, 0.205, i - ROAD_W / 2, false);
+    box(WORLD, 0.2, 2, mats.curb, 0, 0.205, i + ROAD_W / 2, false);
   }
 
   const facadeColors = [0x8b8274, 0x787f85, 0x6e818c, 0x808773, 0x747486];
@@ -199,6 +233,102 @@ function spawnCity() {
     if (rnd(i + 11) > 0.5) spawnLamp(x + 38, z + 38);
     else spawnTree(x + 38, z + 38);
   }
+
+  decorateMainStreet();
+}
+
+function decorateMainStreet() {
+  box(86, 0.16, 980, mats.road, 0, 0.28, 250, false);
+  box(2.4, 0.2, 900, mats.curb, -35, 0.38, 250, false);
+  box(2.4, 0.2, 900, mats.curb, 35, 0.38, 250, false);
+  box(30, 0.18, 980, mats.road, -58, 0.27, 250, false);
+  box(30, 0.18, 980, mats.road, 58, 0.27, 250, false);
+
+  for (let z = -120; z <= 640; z += 72) {
+    addLaneDash(0, z);
+  }
+
+  addCrosswalk(0, 42);
+  addCrosswalk(0, 318);
+
+  for (let z = 18; z <= 520; z += 72) {
+    addStorefront(-68, z, 1, z);
+    addStorefront(68, z + 28, -1, z + 4);
+  }
+
+  for (let z = -42; z <= 520; z += 112) {
+    const left = makeVehicle(-38, z, false);
+    left.group.rotation.y = Math.PI;
+    left.ai = false;
+    left.speed = 0;
+    const right = makeVehicle(38, z + 56, false);
+    right.group.rotation.y = 0;
+    right.ai = false;
+    right.speed = 0;
+  }
+
+  for (let z = 0; z <= 600; z += 64) {
+    spawnTrashCan(-51, z + 18);
+    spawnNewsBox(51, z + 46);
+    spawnLamp(-55, z + 36);
+    spawnLamp(55, z + 4);
+  }
+
+  for (let z = -34; z <= 210; z += 48) {
+    makePedestrian(-24, z + 18);
+    makePedestrian(24, z + 42);
+  }
+
+  const showcase = makeVehicle(0, 78, false);
+  showcase.group.rotation.y = Math.PI;
+  showcase.ai = false;
+  showcase.speed = 0;
+}
+
+function addLaneDash(x, z) {
+  box(2.2, 0.12, 34, mats.yellowPaint, x, 0.44, z, false);
+}
+
+function addCrosswalk(x, z) {
+  for (let i = -4; i <= 4; i++) {
+    box(9, 0.13, 46, mats.whitePaint, x + i * 9, 0.45, z, false);
+  }
+}
+
+function addStorefront(x, z, side, seed) {
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+  group.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: [0x8a7358, 0x776d63, 0x716f82, 0x7f806c][Math.floor(rnd(seed) * 4)],
+    roughness: 0.82
+  });
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(42, 24, 5), wallMat), 0, 12, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(32, 12, 1.2), mats.shopGlass), 0, 8, -3.1);
+
+  const signColor = [0xff6158, 0xffc857, 0x5be0c7, 0x77a6ff][Math.floor(rnd(seed + 9) * 4)];
+  const sign = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(36, 5, 1.4), new THREE.MeshBasicMaterial({ color: signColor })), 0, 18, -3.7);
+  const awning = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(39, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x2b2b2e, roughness: 0.6 })), 0, 14, -6);
+  awning.rotation.x = -0.12;
+  sign.userData.decor = true;
+
+  for (let i = -1; i <= 1; i++) {
+    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(7, 3, 1), new THREE.MeshBasicMaterial({ color: 0xffefb2 })), i * 10, 8, -3.8);
+  }
+
+  scene.add(group);
+}
+
+function spawnTrashCan(x, z) {
+  const can = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 5, 8), new THREE.MeshStandardMaterial({ color: 0x26322d, roughness: 0.8 }));
+  can.position.set(x, 2.5, z);
+  can.castShadow = true;
+  scene.add(can);
+}
+
+function spawnNewsBox(x, z) {
+  box(5.2, 6.2, 3.5, new THREE.MeshStandardMaterial({ color: 0x2b6aa0, roughness: 0.52 }), x, 3.1, z);
 }
 
 function spawnLamp(x, z) {
@@ -220,8 +350,12 @@ function makeVehicle(x, z, police = false) {
   const group = new THREE.Group();
   group.position.set(x, 0.55, z);
   group.rotation.y = rnd(x + z) * Math.PI * 2;
+  const visual = new THREE.Group();
+  group.add(visual);
 
   const colors = [0xb64234, 0x27689a, 0xdbb94c, 0x394044, 0x6f8b58, 0x7d487f];
+  const modelPool = ["sedan", "taxi", "suv", "van"];
+  const modelName = police ? "police" : modelPool[Math.floor(rnd(x + z + 19) * modelPool.length)];
   const bodyMat = new THREE.MeshStandardMaterial({
     color: police ? 0xe9ebe2 : colors[Math.floor(rnd(x) * colors.length)],
     roughness: 0.48,
@@ -230,37 +364,39 @@ function makeVehicle(x, z, police = false) {
   const headMat = new THREE.MeshBasicMaterial({ color: 0xffe4a0 });
   const tailMat = new THREE.MeshBasicMaterial({ color: 0xff322f });
 
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(18, 4.6, 31), bodyMat), 0, 3.3, 0);
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(16, 3.2, 12), bodyMat), 0, 5.1, -12);
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(16, 3, 8), bodyMat), 0, 5, 13);
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(13, 6, 13), mats.glass), 0, 8, -1);
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(17, 2, 1.6), mats.chrome), 0, 2.6, -16.6);
-  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(17, 2, 1.6), mats.chrome), 0, 2.6, 16.6);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(18, 4.6, 31), bodyMat), 0, 3.3, 0);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(16, 3.2, 12), bodyMat), 0, 5.1, -12);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(16, 3, 8), bodyMat), 0, 5, 13);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(13, 6, 13), mats.glass), 0, 8, -1);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(17, 2, 1.6), mats.chrome), 0, 2.6, -16.6);
+  addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(17, 2, 1.6), mats.chrome), 0, 2.6, 16.6);
 
   const wheels = [];
   for (const sx of [-8.8, 8.8]) {
     for (const sz of [-11, 11]) {
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, 2.2, 10), mats.tire);
       wheel.rotation.z = Math.PI / 2;
-      addTo(group, wheel, sx, 2, sz);
+      addTo(visual, wheel, sx, 2, sz);
       wheels.push(wheel);
     }
   }
 
   for (const sx of [-5.5, 5.5]) {
-    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(4, 1.3, 0.6), headMat), sx, 4.2, -17.6);
-    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(4, 1.3, 0.6), tailMat), sx, 4.2, 17.6);
+    addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(4, 1.3, 0.6), headMat), sx, 4.2, -17.6);
+    addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(4, 1.3, 0.6), tailMat), sx, 4.2, 17.6);
   }
 
   let siren = null;
   if (police) {
-    siren = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(9, 1.2, 2.5), new THREE.MeshBasicMaterial({ color: 0x224dff })), 0, 12, -3);
-    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(18.4, 0.2, 5), new THREE.MeshBasicMaterial({ color: 0x1c3047 })), 0, 5.7, 4);
+    siren = addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(9, 1.2, 2.5), new THREE.MeshBasicMaterial({ color: 0x224dff })), 0, 12, -3);
+    addTo(visual, new THREE.Mesh(new THREE.BoxGeometry(18.4, 0.2, 5), new THREE.MeshBasicMaterial({ color: 0x1c3047 })), 0, 5.7, 4);
   }
 
   scene.add(group);
   const car = {
     group,
+    visual,
+    modelName,
     wheels,
     siren,
     police,
@@ -272,7 +408,26 @@ function makeVehicle(x, z, police = false) {
   };
   vehicles.push(car);
   if (police) cops.push(car);
+  applyCarModel(car);
   return car;
+}
+
+function applyCarModel(car) {
+  const source = carModels[car.modelName];
+  if (!source) return;
+  car.visual.clear();
+  const model = source.clone(true);
+  model.traverse(child => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+      if (child.material) child.material.needsUpdate = true;
+    }
+  });
+  model.scale.setScalar(7.8);
+  model.position.set(0, 0.2, 0);
+  model.rotation.y = Math.PI;
+  car.visual.add(model);
 }
 
 function makePedestrian(x, z) {
@@ -859,4 +1014,5 @@ document.getElementById("carBtn").addEventListener("pointerdown", e => {
 spawnCity();
 spawnActors();
 updateHud();
+missionEl.textContent = "3D scene ready. Find a car, drive, shoot, and survive the wanted level.";
 loop();
