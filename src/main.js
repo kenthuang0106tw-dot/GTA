@@ -1094,9 +1094,18 @@ function loop() {
 function bindStick(id, knobId, onMove, onEnd) {
   const el = document.getElementById(id);
   const knob = document.getElementById(knobId);
+  let activePointer = null;
+
+  function reset() {
+    activePointer = null;
+    knob.style.transform = "translate3d(0, 0, 0)";
+    el.classList.remove("active");
+    onEnd();
+  }
+
   function move(e) {
+    if (activePointer !== e.pointerId) return;
     e.preventDefault();
-    el.setPointerCapture(e.pointerId);
     const rect = el.getBoundingClientRect();
     const cx = rect.left + rect.width / 2;
     const cy = rect.top + rect.height / 2;
@@ -1107,28 +1116,56 @@ function bindStick(id, knobId, onMove, onEnd) {
     const m = Math.min(max, mag);
     const nx = dx / mag;
     const ny = dy / mag;
-    knob.style.transform = `translate(${nx * m}px, ${ny * m}px)`;
+    knob.style.transform = `translate3d(${nx * m}px, ${ny * m}px, 0)`;
     onMove(nx * (m / max), ny * (m / max));
   }
-  function end() {
-    knob.style.transform = "translate(0, 0)";
-    onEnd();
+  function start(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (activePointer !== null) return;
+    activePointer = e.pointerId;
+    el.classList.add("active");
+    el.setPointerCapture?.(e.pointerId);
+    move(e);
   }
-  el.addEventListener("pointerdown", move);
+
+  function end(e) {
+    if (activePointer !== e.pointerId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    reset();
+  }
+
+  el.addEventListener("pointerdown", start);
   el.addEventListener("pointermove", move);
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", end);
+  el.addEventListener("lostpointercapture", reset);
+  addEventListener("blur", reset);
 }
 
 function bindHold(id, down, up) {
   const el = document.getElementById(id);
+  let activePointer = null;
+  function release(e) {
+    if (activePointer !== null && e?.pointerId !== undefined && e.pointerId !== activePointer) return;
+    activePointer = null;
+    el.classList.remove("active");
+    up();
+  }
   el.addEventListener("pointerdown", e => {
     e.preventDefault();
-    el.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+    if (activePointer !== null) return;
+    activePointer = e.pointerId;
+    el.classList.add("active");
+    el.setPointerCapture?.(e.pointerId);
     down();
   });
-  el.addEventListener("pointerup", up);
-  el.addEventListener("pointercancel", up);
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  el.addEventListener("lostpointercapture", release);
+  addEventListener("blur", release);
 }
 
 addEventListener("resize", () => {
@@ -1198,14 +1235,43 @@ bindHold("gasBtn", () => {
   input.gas = false;
 });
 
+function resetTouchInput() {
+  input.x = 0;
+  input.y = 0;
+  input.lookX = 0;
+  input.lookY = 0;
+  input.fire = false;
+  input.gas = false;
+  document.querySelectorAll(".knob").forEach(knob => {
+    knob.style.transform = "translate3d(0, 0, 0)";
+  });
+  document.querySelectorAll(".touch .active").forEach(el => el.classList.remove("active"));
+}
+
+addEventListener("pointercancel", resetTouchInput);
+addEventListener("pagehide", resetTouchInput);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) resetTouchInput();
+});
+
 document.getElementById("hitBtn").addEventListener("pointerdown", e => {
   e.preventDefault();
+  e.stopPropagation();
   melee();
 });
 
 document.getElementById("carBtn").addEventListener("pointerdown", e => {
   e.preventDefault();
+  e.stopPropagation();
   enterExitCar();
+});
+
+document.querySelectorAll(".touch, .touch *").forEach(el => {
+  el.addEventListener("contextmenu", e => e.preventDefault());
+  el.addEventListener("selectstart", e => e.preventDefault());
+  el.addEventListener("dragstart", e => e.preventDefault());
+  el.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+  el.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
 });
 
 spawnCity();
