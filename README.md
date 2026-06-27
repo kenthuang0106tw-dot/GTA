@@ -1,33 +1,42 @@
 # Open City 3D
 
-A Three.js first-person open city action prototype with a low-poly PS2-era style.
+A Three.js first-person open city action prototype with local engine files, low-poly models, local textures, procedural audio, traffic, pedestrians, and police pursuit.
 
-## Play
+## Play On GitHub Pages
 
-Open `index.html` in a browser or publish this repository with GitHub Pages.
+Open:
 
-The game loads Three.js from a CDN, so the browser needs internet access.
+```text
+https://kenthuang0106tw-dot.github.io/GTA/
+```
 
-## Features
+## Play Locally
 
-- First-person 3D camera
-- Low-poly city with roads, textured buildings, sidewalks, street lights, trees, traffic, skyline, fog, and sky dome
-- Procedural PS2-style textures for asphalt, grass, sidewalks, and building facades
-- Improved lighting, shadows, warm color grading, vignette, and scanline overlay
-- Walking, sprinting, aiming, shooting, melee attacks, and reload
-- Enter and exit vehicles
-- Drivable multi-part car models with headlights, wheels, bumpers, cabins, and police lights
-- Pedestrian NPCs with low-poly bodies, panic behavior, and walking animation
-- Police cars, wanted stars, health, armor, ammo, and damage
-- Mobile touch controls
+From this folder:
 
-## Latest Fixes
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\dev-server.ps1
+```
 
-- Fixed inverted forward/backward movement.
-- Driving now moves toward the vehicle front instead of backward.
-- Driving view now uses a simple dashboard/steering wheel overlay instead of the weapon overlay.
+Then open:
 
-## Desktop Controls
+```text
+http://127.0.0.1:8787/
+```
+
+## What Changed
+
+- Three.js is now vendored in `vendor/three.module.js`; the game no longer depends on jsDelivr.
+- Game code is split into `src/main.js` and `src/styles.css`.
+- Local texture assets live in `assets/textures/`.
+- Forward/backward movement is fixed for walking and driving.
+- The city now uses textured roads, sidewalks, building facades, grass, a sky dome, fog, skyline, lighting, and shadows.
+- Cars are multi-part low-poly models with wheels, bumpers, lights, cabins, police sirens, and wheel animation.
+- Pedestrians are multi-part low-poly characters with walking animation and panic behavior.
+- Audio is generated with WebAudio for shots, melee hits, explosions, and engine hum.
+- Driving switches to a dashboard/steering-wheel overlay.
+
+## Controls
 
 - Click the game: lock mouse look
 - `WASD` or arrow keys: move / drive
