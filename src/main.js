@@ -81,6 +81,9 @@ const mats = {
   chrome: new THREE.MeshStandardMaterial({ color: 0xd4d0c2, roughness: 0.32, metalness: 0.55 }),
   skin: new THREE.MeshStandardMaterial({ color: 0xd9b38d, roughness: 0.72 }),
   dark: new THREE.MeshStandardMaterial({ color: 0x25211f, roughness: 0.8 }),
+  black: new THREE.MeshBasicMaterial({ color: 0x080706 }),
+  warmWindow: new THREE.MeshBasicMaterial({ color: 0xffd27a }),
+  coldWindow: new THREE.MeshBasicMaterial({ color: 0x82b7c8 }),
   shopGlass: new THREE.MeshStandardMaterial({ color: 0x16272d, roughness: 0.18, metalness: 0.18, emissive: 0x061014, emissiveIntensity: 0.55 }),
   curb: new THREE.MeshStandardMaterial({ color: 0xd6c8a2, roughness: 0.7 }),
   whitePaint: new THREE.MeshBasicMaterial({ color: 0xf5ead0 }),
@@ -216,6 +219,7 @@ function spawnCity() {
       b.userData.solid = true;
       colliders.push({ mesh: b, x: ix, z: iz, w, d });
       box(w * 0.92, 1.5, d * 0.92, mats.roof, ix, h + 1, iz, false);
+      decorateBuilding(ix, iz, w, d, h, ix + iz);
 
       if (rnd(ix + iz * 4) > 0.72) {
         const signMat = new THREE.MeshBasicMaterial({ color: [0xffc857, 0x3dd6d0, 0xff6b6b][Math.floor(rnd(ix) * 3)] });
@@ -243,6 +247,35 @@ function spawnCity() {
   }
 
   decorateMainStreet();
+}
+
+function decorateBuilding(x, z, w, d, h, seed) {
+  const floors = Math.max(2, Math.floor(h / 16));
+  const colsFront = Math.max(2, Math.floor(w / 16));
+  const colsSide = Math.max(2, Math.floor(d / 18));
+  for (let floor = 0; floor < Math.min(floors, 8); floor++) {
+    const y = 10 + floor * 14;
+    if (y > h - 8) break;
+    for (let i = 0; i < colsFront; i++) {
+      const px = x - w * 0.38 + (i / Math.max(1, colsFront - 1)) * w * 0.76;
+      const lit = rnd(seed + floor * 19 + i * 5) > 0.62;
+      const mat = lit ? mats.warmWindow : mats.black;
+      box(5.4, 6.2, 0.7, mat, px, y, z - d / 2 - 0.45, false);
+      box(5.4, 0.6, 0.9, mats.dark, px, y + 3.5, z - d / 2 - 0.5, false);
+      box(5.4, 6.2, 0.7, mat, px, y, z + d / 2 + 0.45, false);
+    }
+    for (let i = 0; i < colsSide; i++) {
+      const pz = z - d * 0.36 + (i / Math.max(1, colsSide - 1)) * d * 0.72;
+      const mat = rnd(seed + floor * 11 + i * 3) > 0.68 ? mats.coldWindow : mats.black;
+      box(0.7, 5.8, 5, mat, x - w / 2 - 0.45, y, pz, false);
+      box(0.7, 5.8, 5, mat, x + w / 2 + 0.45, y, pz, false);
+    }
+  }
+
+  if (w > 65 && d > 65) {
+    box(12, 5, 10, new THREE.MeshStandardMaterial({ color: 0x3a3b38, roughness: 0.72 }), x - w * 0.22, h + 4.3, z + d * 0.18, false);
+    box(7, 9, 7, new THREE.MeshStandardMaterial({ color: 0x4c4d47, roughness: 0.68 }), x + w * 0.18, h + 6.2, z - d * 0.18, false);
+  }
 }
 
 function decorateMainStreet() {
@@ -334,12 +367,29 @@ function addStorefront(x, z, side, seed) {
     for (let i = -1; i <= 1; i++) {
       const lit = rnd(seed + floor * 13 + i * 7) > 0.48;
       const mat = new THREE.MeshBasicMaterial({ color: lit ? 0xffd37a : 0x17120d });
-      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(5.8, 4.2, 1), mat), i * 12, 28 + floor * 8, -3.7);
+      const wx = i * 12;
+      const wy = 28 + floor * 8;
+      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(5.8, 4.2, 1), mat), wx, wy, -3.7);
+      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.55, 1.2), mats.dark), wx, wy + 2.45, -3.95);
+      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.55, 1.2), mats.dark), wx, wy - 2.45, -3.95);
+      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.55, 5.4, 1.2), mats.dark), wx - 3.6, wy, -3.95);
+      addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.55, 5.4, 1.2), mats.dark), wx + 3.6, wy, -3.95);
+      if (floor === 1 && i === 1) {
+        addTo(group, new THREE.Mesh(new THREE.BoxGeometry(5.8, 1.8, 2.2), new THREE.MeshStandardMaterial({ color: 0xc5c0ad, roughness: 0.55 })), wx, wy - 4.2, -4.9);
+        addTo(group, new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.7, 3), mats.dark), wx, wy - 6.4, -5.2);
+      }
     }
   }
   const bladeColor = [0xff4e56, 0x47f0c9, 0xffd45a][Math.floor(rnd(seed + 31) * 3)];
   addTo(group, new THREE.Mesh(new THREE.BoxGeometry(2.2, 14, 1.3), new THREE.MeshBasicMaterial({ color: bladeColor })), 20, 25, -5.2);
   addTo(group, new THREE.Mesh(new THREE.BoxGeometry(5, 3, 2), new THREE.MeshStandardMaterial({ color: 0xc8c2ad, roughness: 0.55 })), -20, 25, -4.8);
+  for (let floor = 0; floor < 2; floor++) {
+    const y = 30 + floor * 10;
+    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(10, 0.8, 4), mats.dark), -18, y - 4, -5.4);
+    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.6, 5, 0.8), mats.dark), -22.5, y - 1.6, -5.4);
+    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.6, 5, 0.8), mats.dark), -13.5, y - 1.6, -5.4);
+  }
+  addTo(group, new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 5, 12), new THREE.MeshStandardMaterial({ color: 0x4b5658, roughness: 0.62, metalness: 0.18 })), 0, 58, 0);
 
   scene.add(group);
 }
@@ -389,11 +439,43 @@ function spawnLamp(x, z) {
 }
 
 function spawnTree(x, z) {
-  box(3, 12, 3, new THREE.MeshStandardMaterial({ color: 0x4a3123, roughness: 0.75 }), x, 6, z);
-  const top = new THREE.Mesh(new THREE.ConeGeometry(12, 26, 7), new THREE.MeshStandardMaterial({ color: 0x3f6e45, roughness: 0.85 }));
-  top.position.set(x, 22, z);
-  top.castShadow = true;
-  scene.add(top);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3824, roughness: 0.82 });
+  const leafMats = [
+    new THREE.MeshStandardMaterial({ color: 0x2f6a3d, roughness: 0.86 }),
+    new THREE.MeshStandardMaterial({ color: 0x3f7e45, roughness: 0.86 }),
+    new THREE.MeshStandardMaterial({ color: 0x244f34, roughness: 0.9 })
+  ];
+  box(11, 1.2, 11, new THREE.MeshStandardMaterial({ color: 0x5a5040, roughness: 0.78 }), x, 0.6, z, false);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.4, 15, 8), trunkMat);
+  trunk.position.set(x, 7.5, z);
+  trunk.castShadow = true;
+  trunk.receiveShadow = true;
+  scene.add(trunk);
+
+  for (let i = 0; i < 4; i++) {
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.8, 8, 6), trunkMat);
+    branch.position.set(x + Math.sin(i * Math.PI / 2) * 3.2, 15 + i * 0.9, z + Math.cos(i * Math.PI / 2) * 3.2);
+    branch.rotation.z = Math.sin(i * Math.PI / 2) * 0.72;
+    branch.rotation.x = Math.cos(i * Math.PI / 2) * 0.72;
+    branch.castShadow = true;
+    scene.add(branch);
+  }
+
+  const clumps = [
+    [0, 23, 0, 12, 16],
+    [-6, 19, 2, 9, 12],
+    [6, 20, -2, 9, 12],
+    [0, 18, 7, 8, 10]
+  ];
+  for (let i = 0; i < clumps.length; i++) {
+    const [ox, oy, oz, r, h] = clumps[i];
+    const top = new THREE.Mesh(new THREE.ConeGeometry(r, h, 8), leafMats[i % leafMats.length]);
+    top.position.set(x + ox, oy, z + oz);
+    top.rotation.y = rnd(x + z + i) * Math.PI;
+    top.castShadow = true;
+    top.receiveShadow = true;
+    scene.add(top);
+  }
 }
 
 function makeVehicle(x, z, police = false) {
@@ -529,14 +611,35 @@ function makePedestrian(x, z) {
   group.position.set(x, 0, z);
 
   const clothes = [0xc98b6a, 0x8fb6cf, 0xb9a36c, 0x8aa66a, 0xaf7b91];
+  const pantsColors = [0x1c252d, 0x2c2a25, 0x343a4a, 0x3b2f2f];
   const cloth = new THREE.MeshStandardMaterial({ color: clothes[Math.floor(rnd(x + z) * clothes.length)], roughness: 0.78 });
-  const torso = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(3.5, 5.4, 2.3), cloth), 0, 5.8, 0);
+  const pants = new THREE.MeshStandardMaterial({ color: pantsColors[Math.floor(rnd(x - z) * pantsColors.length)], roughness: 0.78 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0x080706, roughness: 0.7 });
+  const accent = new THREE.MeshStandardMaterial({ color: [0xf0d06c, 0x79c5d6, 0xdc7063][Math.floor(rnd(x + 12) * 3)], roughness: 0.65 });
+  const torso = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(3.7, 5.4, 2.4), cloth), 0, 6.2, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(4, 0.75, 2.55), accent), 0, 8.8, -0.03);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.55, 2.55), mats.dark), 0, 3.65, -0.02);
   const head = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(2.7, 2.7, 2.7), mats.skin), 0, 10.2, 0);
-  const hair = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.9, 2.9), mats.dark), 0, 11.45, 0);
-  const leftArm = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.1, 4.8, 1), mats.skin), -2.5, 5.5, 0);
-  const rightArm = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.1, 4.8, 1), mats.skin), 2.5, 5.5, 0);
-  const leftLeg = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.1), mats.dark), -0.85, 2.2, 0);
-  const rightLeg = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 1.1), mats.dark), 0.85, 2.2, 0);
+  const hair = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(2.95, 0.95, 2.95), mats.dark), 0, 11.55, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.7, 0.55), mats.dark), 0, 10.95, -1.55);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.18), mats.black), -0.55, 10.35, -1.45);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.18), mats.black), 0.55, 10.35, -1.45);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.22, 0.16), new THREE.MeshBasicMaterial({ color: 0x7b3a32 })), 0, 9.75, -1.46);
+  const leftArm = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.05, 4.5, 0.9), mats.skin), -2.55, 5.8, 0);
+  const rightArm = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.05, 4.5, 0.9), mats.skin), 2.55, 5.8, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.2, 0.95), cloth), -2.55, 8.45, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.2, 0.95), cloth), 2.55, 8.45, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 0.95), mats.skin), -2.55, 3.1, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1, 0.8, 0.95), mats.skin), 2.55, 3.1, 0);
+  const leftLeg = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.15, 4.3, 1.05), pants), -0.85, 2.4, 0);
+  const rightLeg = addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.15, 4.3, 1.05), pants), 0.85, 2.4, 0);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 2), shoeMat), -0.85, 0.35, -0.28);
+  addTo(group, new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 2), shoeMat), 0.85, 0.35, -0.28);
+  if (rnd(x + z + 33) > 0.5) {
+    addTo(group, new THREE.Mesh(new THREE.BoxGeometry(3.2, 4.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x27313b, roughness: 0.82 })), 0, 6.2, 1.5);
+  } else {
+    addTo(group, new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.85, 0.55, 12), accent), 0, 12.1, 0);
+  }
   torso.name = "torso"; head.name = "head"; hair.name = "hair";
   scene.add(group);
 
